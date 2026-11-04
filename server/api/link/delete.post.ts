@@ -1,15 +1,28 @@
+import { DeleteLinkSchema } from '#shared/schemas/link'
+
+defineRouteMeta({
+  openAPI: {
+    description: 'Delete a short link',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            required: ['slug'],
+            properties: {
+              slug: { type: 'string', description: 'The slug of the link to delete' },
+            },
+          },
+        },
+      },
+    },
+  },
+})
+
 export default eventHandler(async (event) => {
-  const { previewMode } = useRuntimeConfig(event).public
-  if (previewMode) {
-    throw createError({
-      status: 403,
-      statusText: 'Preview mode cannot delete links.',
-    })
-  }
-  const { slug } = await readBody(event)
-  if (slug) {
-    const { cloudflare } = event.context
-    const { KV } = cloudflare.env
-    await KV.delete(`link:${slug}`)
-  }
+  assertLinkWritesAllowed(event, 'delete')
+  const { slug } = await readValidatedBody(event, DeleteLinkSchema.parse)
+  await removeLink(event, slug)
 })

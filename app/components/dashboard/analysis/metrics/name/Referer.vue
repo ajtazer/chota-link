@@ -1,7 +1,7 @@
-<script setup>
-defineProps({
-  name: String,
-})
+<script setup lang="ts">
+defineProps<{
+  name?: string
+}>()
 </script>
 
 <template>
@@ -9,24 +9,28 @@ defineProps({
     :href="`http://${name}`"
     target="_blank"
     rel="noopener noreferrer"
-    class="block w-full truncate"
+    class="flex w-full min-w-0 items-start gap-1"
   >
     <Avatar
-      class="w-5 h-5 p-0.5 float-left"
+      class="size-5 shrink-0 p-0.5"
     >
       <AvatarImage
-        :src="`https://unavatar.io/${name}?fallback=false`"
-        alt="@radix-vue"
+        :src="`https://unavatar.webp.se/${name}?fallback=false`"
+        :alt="name"
         loading="lazy"
+        width="20"
+        height="20"
       />
       <AvatarFallback>
         <img
           src="/icon.png"
-          alt="Sink"
+          :alt="name"
           loading="lazy"
+          width="20"
+          height="20"
         >
       </AvatarFallback>
     </Avatar>
-    <span>{{ name }}</span>
+    <span class="min-w-0 break-all">{{ name }}</span>
   </a>
 </template>

@@ -1,8 +1,13 @@
-<script setup>
+<script setup lang="ts">
+import 'vue-sonner/style.css'
+
 const { title, description, image } = useAppConfig()
+const route = useRoute()
+const localeHead = useLocaleHead()
+const colorMode = useColorMode()
 
 useSeoMeta({
-  title: `${title} - ${description}`,
+  title: `${title} - Link Shortener with Analytics`,
   description,
   ogType: 'website',
   ogTitle: title,
@@ -15,18 +20,23 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
-useHead({
-  htmlAttrs: {
-    lang: 'en',
-  },
+useHead(() => ({
+  htmlAttrs: localeHead.value.htmlAttrs,
   meta: [
     {
       name: 'viewport',
-      content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
-      tagPosition: 'head',
+      content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+    },
+    {
+      name: 'theme-color',
+      content: colorMode.value === 'dark' ? '#09090b' : '#ffffff',
     },
   ],
   link: [
+    {
+      rel: 'canonical',
+      href: computed(() => `https://sink.cool${route.path}`),
+    },
     {
       rel: 'icon',
       type: 'image/png',
@@ -37,13 +47,13 @@ useHead({
       href: '/apple-touch-icon.png',
     },
   ],
-})
+}))
 </script>
 
 <template>
   <NuxtLayout>
-    <NuxtLoadingIndicator color="#000" />
+    <NuxtLoadingIndicator color="var(--primary)" />
     <NuxtPage />
-    <Toaster />
+    <Toaster position="top-center" rich-colors />
   </NuxtLayout>
 </template>

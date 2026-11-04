@@ -1,67 +1,17 @@
-<script setup>
-import { now } from '@internationalized/date'
-import { useUrlSearchParams } from '@vueuse/core'
+<script setup lang="ts">
+const realtimeStore = useDashboardRealtimeStore()
 
-const emit = defineEmits(['update:timeRange'])
+function onPresetChange(value: string | number | bigint | Record<string, any> | null) {
+  if (!isRealtimeWindow(value))
+    return
 
-const timeRange = ref('last-1h')
-
-watch(timeRange, (newValue) => {
-  switch (newValue) {
-    case 'today':
-      emit('update:timeRange', [date2unix(now(), 'start'), date2unix(now())], newValue)
-      break
-    case 'last-5m':
-      emit('update:timeRange', [date2unix(now().subtract({ minutes: 5 })), date2unix(now())], newValue)
-      break
-    case 'last-10m':
-      emit('update:timeRange', [date2unix(now().subtract({ minutes: 10 })), date2unix(now())], newValue)
-      break
-    case 'last-30m':
-      emit('update:timeRange', [date2unix(now().subtract({ minutes: 30 })), date2unix(now())], newValue)
-      break
-    case 'last-1h':
-      emit('update:timeRange', [date2unix(now().subtract({ hours: 1 })), date2unix(now())], newValue)
-      break
-    case 'last-6h':
-      emit('update:timeRange', [date2unix(now().subtract({ hours: 6 })), date2unix(now())], newValue)
-      break
-    case 'last-12h':
-      emit('update:timeRange', [date2unix(now().subtract({ hours: 12 })), date2unix(now())], newValue)
-      break
-    case 'last-24h':
-      emit('update:timeRange', [date2unix(now().subtract({ hours: 24 })), date2unix(now())], newValue)
-      break
-    default:
-      break
-  }
-}, { deep: true })
-
-function restoreTimeRange() {
-  try {
-    const searchParams = useUrlSearchParams('history')
-    if (searchParams.time) {
-      timeRange.value = searchParams.time
-      triggerRef(timeRange)
-    }
-  }
-  catch (error) {
-    console.error('restore searchParams error', error)
-  }
+  realtimeStore.selectPreset(value)
 }
-
-defineExpose({
-  restoreTimeRange,
-})
-
-onBeforeMount(() => {
-  restoreTimeRange()
-})
 </script>
 
 <template>
-  <Select v-model="timeRange">
-    <SelectTrigger>
+  <Select :model-value="realtimeStore.timeName" @update:model-value="onPresetChange">
+    <SelectTrigger :aria-label="$t('dashboard.realtime.time_range_label')">
       <SelectValue />
     </SelectTrigger>
     <SelectContent>

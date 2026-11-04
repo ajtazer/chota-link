@@ -1,38 +1,36 @@
 <script setup lang="ts">
-import { type HTMLAttributes, computed } from 'vue'
+import { ChevronDownIcon, ChevronUpIcon } from '@lucide/vue';
+
+import type { AccordionTriggerProps } from "reka-ui"
+import type { HTMLAttributes } from "vue"
+import { reactiveOmit } from "@vueuse/core"
 import {
   AccordionHeader,
   AccordionTrigger,
-  type AccordionTriggerProps,
-} from 'radix-vue'
-import { ChevronDown } from 'lucide-vue-next'
-import { cn } from '@/utils'
+} from "reka-ui"
+import { cn } from "@/lib/utils"
 
-const props = defineProps<AccordionTriggerProps & { class?: HTMLAttributes['class'] }>()
+const props = defineProps<AccordionTriggerProps & { class?: HTMLAttributes["class"] }>()
 
-const delegatedProps = computed(() => {
-  const { class: _, ...delegated } = props
-
-  return delegated
-})
+const delegatedProps = reactiveOmit(props, "class")
 </script>
 
 <template>
   <AccordionHeader class="flex">
     <AccordionTrigger
+      data-slot="accordion-trigger"
       v-bind="delegatedProps"
       :class="
         cn(
-          'flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180',
+          '**:data-[slot=accordion-trigger-icon]:text-muted-foreground gap-6 p-4 text-left text-sm font-medium hover:underline **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 group/accordion-trigger relative flex flex-1 items-start justify-between border border-transparent transition-all outline-none disabled:pointer-events-none disabled:opacity-50',
           props.class,
         )
       "
     >
       <slot />
       <slot name="icon">
-        <ChevronDown
-          class="h-4 w-4 shrink-0 transition-transform duration-200"
-        />
+        <ChevronDownIcon data-slot="accordion-trigger-icon" class="pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden" />
+        <ChevronUpIcon data-slot="accordion-trigger-icon" class="pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline" />
       </slot>
     </AccordionTrigger>
   </AccordionHeader>

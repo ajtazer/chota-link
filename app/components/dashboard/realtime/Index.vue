@@ -1,70 +1,111 @@
-<script setup>
-import { now } from '@internationalized/date'
-import { useIntervalFn, useUrlSearchParams } from '@vueuse/core'
-import { safeDestr } from 'destr'
+<script setup lang="ts">
+import { useDocumentVisibility, useIntervalFn } from '@vueuse/core'
 
-const searchParams = useUrlSearchParams('history')
-
-const timePicker = ref(null)
-
-const time = ref({
-  startAt: date2unix(now().subtract({ hours: 1 })),
-  endAt: date2unix(now()),
+const realtimeStore = useDashboardRealtimeStore()
+const showGlobe = shallowRef(false)
+const visibility = useDocumentVisibility()
+const isPaused = inject(REALTIME_PAUSED_KEY, shallowRef(false))
+const logsError = shallowRef(false)
+const statusKey = computed(() => {
+  if (isPaused.value)
+    return 'dashboard.realtime.paused'
+  return logsError.value ? 'dashboard.realtime.events_error' : 'dashboard.realtime.running'
 })
 
-provide('time', time)
+const rIC = window.requestIdleCallback || ((cb: IdleRequestCallback) => setTimeout(cb, 50))
+const cancelRIC = window.cancelIdleCallback || clearTimeout
+let idleCallbackId: number | undefined
+const { pause, resume } = useIntervalFn(
+  () => realtimeStore.selectPreset(realtimeStore.timeName),
+  10_000,
+  { immediate: false, immediateCallback: false },
+)
 
-function changeTime(timeRange, timeName) {
-  console.log('changeTime', timeRange, timeName)
-  time.value.startAt = timeRange[0]
-  time.value.endAt = timeRange[1]
-
-  searchParams.time = timeName
-}
-
-const filters = ref({})
-
-provide('filters', filters)
-
-function changeFilter(type, value) {
-  console.log('changeFilter', type, value)
-  filters.value[type] = value
-
-  searchParams.filters = JSON.stringify(filters.value)
-}
-
-useIntervalFn(() => {
-  timePicker.value?.restoreTimeRange()
-}, 5 * 60 * 1000)
-
-function restoreSearchParams() {
-  try {
-    if (searchParams.filters) {
-      filters.value = safeDestr(searchParams.filters)
-    }
+onMounted(() => {
+  if (visibility.value === 'visible' && !isPaused.value) {
+    void realtimeStore.selectPreset(realtimeStore.timeName)
+    resume()
   }
-  catch (error) {
-    console.error('restore searchParams error', error)
-  }
-}
 
-onBeforeMount(() => {
-  restoreSearchParams()
+  idleCallbackId = rIC(() => {
+    showGlobe.value = true
+  }, { timeout: 1000 })
+})
+
+watch([visibility, isPaused], ([state, paused], previous) => {
+  if (state === 'hidden' || paused) {
+    pause()
+    return
+  }
+  if (previous?.[0] === 'hidden' || previous?.[1])
+    void realtimeStore.selectPreset(realtimeStore.timeName)
+  resume()
+})
+
+onBeforeUnmount(() => {
+  pause()
+  if (idleCallbackId !== undefined)
+    cancelRIC(idleCallbackId)
 })
 </script>
 
 <template>
-  <main class="space-y-6">
-    <div class="flex flex-col gap-6 sm:gap-2 sm:flex-row sm:justify-between">
-      <DashboardNav class="flex-1">
-        <DashboardTimePicker ref="timePicker" @update:time-range="changeTime" />
-      </DashboardNav>
-      <DashboardFilters @change="changeFilter" />
+  <div
+    class="
+      relative flex w-full flex-col gap-4
+      lg:block lg:h-full
+    "
+  >
+    <DashboardRealtimeChart
+      class="
+        z-10
+        lg:absolute lg:top-0 lg:left-0
+      "
+    />
+    <div
+      class="
+        aspect-square
+        lg:absolute lg:inset-0 lg:aspect-auto
+      "
+    >
+      <LazyDashboardRealtimeGlobe
+        v-if="showGlobe"
+        class="size-full"
+      />
+      <div
+        v-else
+        class="flex size-full items-center justify-center"
+        role="status"
+      >
+        <div
+          class="
+            size-3/4 rounded-full bg-muted/20
+            motion-safe:animate-pulse
+          "
+        />
+        <span class="sr-only">{{ $t('dashboard.loading') }}</span>
+      </div>
     </div>
-    <div class="relative space-y-4">
-      <DashboardRealtimeChart class="md:absolute top-0 left-0 z-10" />
-      <LazyDashboardRealtimeGlobe />
-      <DashboardRealtimeLogs class="md:absolute top-0 right-0 h-full z-10" />
+    <div
+      class="
+        absolute top-2 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2
+        text-xs text-muted-foreground
+      "
+      aria-live="polite"
+    >
+      <span
+        aria-hidden="true"
+        class="size-1.5 rounded-full bg-chart-2"
+        :class="{ 'motion-safe:animate-pulse': !isPaused && !logsError }"
+      />
+      {{ $t(statusKey) }}
     </div>
-  </main>
+    <DashboardRealtimeLogs
+      class="
+        z-10 h-[400px]
+        lg:absolute lg:top-0 lg:right-0 lg:h-full
+      "
+      @error-change="logsError = $event"
+    />
+  </div>
 </template>

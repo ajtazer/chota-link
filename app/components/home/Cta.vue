@@ -1,21 +1,60 @@
+<script setup lang="ts">
+const { documentation } = useAppConfig()
+</script>
+
 <template>
-  <div
-    class="flex flex-col items-center max-w-4xl p-8 mx-auto my-12 text-center bg-black rounded-lg md:px-20 md:py-20"
+  <section
+    class="
+      bg-background py-16 text-foreground
+      md:py-24
+    "
   >
-    <h2 class="text-4xl tracking-tight text-white md:text-6xl">
-      {{ $t('home.cta.title') }}
-    </h2>
-    <p class="mt-4 text-lg text-slate-400 md:text-xl">
-      {{ $t('home.cta.description') }}
-    </p>
-    <div class="flex mt-5">
-      <HomeLink
-        href="https://github.com/ccbikai/sink?tab=readme-ov-file#%EF%B8%8F-deployment"
-        type="inverted"
-        :title="$t('home.cta.button')"
+    <div class="mx-auto max-w-6xl px-6">
+      <Card
+        class="mx-auto max-w-3xl"
       >
-        {{ $t('home.cta.button') }}
-      </HomeLink>
+        <CardContent
+          class="
+            py-4 text-center
+            md:py-6
+          "
+        >
+          <h2
+            class="text-3xl font-semibold text-balance"
+          >
+            {{ $t('home.cta.title') }}
+          </h2>
+          <p class="mt-4 text-muted-foreground">
+            {{ $t('home.cta.description') }}
+          </p>
+
+          <div class="mt-8 flex flex-wrap justify-center gap-4">
+            <Button
+              as-child
+              size="lg"
+            >
+              <a
+                :href="`${documentation}/guide/getting-started`"
+                target="_blank"
+                rel="noopener noreferrer"
+                :title="$t('home.cta.button')"
+              >
+                {{ $t('home.cta.button') }}
+              </a>
+            </Button>
+
+            <Button
+              as-child
+              size="lg"
+              variant="outline"
+            >
+              <NuxtLink to="/dashboard" :title="$t('dashboard.title')">
+                {{ $t('dashboard.title') }}
+              </NuxtLink>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  </div>
+  </section>
 </template>

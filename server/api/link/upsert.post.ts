@@ -1,38 +1,21 @@
-import { LinkSchema } from '@@/schemas/link'
+import { CreateLinkSchema } from '#shared/schemas/link'
+
+defineRouteMeta({
+  openAPI: {
+    description: 'Create a short link, or return the existing one when the slug is taken',
+    security: [{ bearerAuth: [] }],
+    requestBody: {
+      required: true,
+      content: { 'application/json': {} },
+    },
+  },
+})
 
 export default eventHandler(async (event) => {
-  const link = await readValidatedBody(event, LinkSchema.parse)
-  const { caseSensitive } = useRuntimeConfig(event)
+  const link = await readValidatedBody(event, CreateLinkSchema.parse)
+  const response = await upsertLink(event, link)
 
-  if (!caseSensitive) {
-    link.slug = link.slug.toLowerCase()
-  }
-
-  const { cloudflare } = event.context
-  const { KV } = cloudflare.env
-
-  // Check if link exists
-  const existingLink = await KV.get(`link:${link.slug}`, { type: 'json' })
-
-  if (existingLink) {
-    // If link exists, return it along with the short link
-    const shortLink = `${getRequestProtocol(event)}://${getRequestHost(event)}/${link.slug}`
-    return { link: existingLink, shortLink, status: 'existing' }
-  }
-
-  // If link doesn't exist, create it
-  const expiration = getExpiration(event, link.expiration)
-
-  await KV.put(`link:${link.slug}`, JSON.stringify(link), {
-    expiration,
-    metadata: {
-      expiration,
-      url: link.url,
-      comment: link.comment,
-    },
-  })
-
-  setResponseStatus(event, 201)
-  const shortLink = `${getRequestProtocol(event)}://${getRequestHost(event)}/${link.slug}`
-  return { link, shortLink, status: 'created' }
+  if (response.status === 'created')
+    setResponseStatus(event, 201)
+  return response
 })

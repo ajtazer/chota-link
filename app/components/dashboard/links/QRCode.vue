@@ -1,80 +1,37 @@
-<script setup>
-import { Download } from 'lucide-vue-next'
+<script setup lang="ts">
+import { Download } from '@lucide/vue'
 import QRCodeStyling from 'qr-code-styling'
 
-const props = defineProps({
-  data: {
-    type: String,
-    required: true,
-  },
-  image: {
-    type: String,
-    default: '',
-  },
+const props = withDefaults(defineProps<{
+  data: string
+  image?: string
+}>(), {
+  image: '',
 })
 const color = ref('#000000')
 const options = {
   width: 256,
   height: 256,
   data: props.data,
+  type: 'svg' as const,
   margin: 10,
-  qrOptions: { typeNumber: '0', mode: 'Byte', errorCorrectionLevel: 'Q' },
+  qrOptions: { typeNumber: 0 as const, mode: 'Byte' as const, errorCorrectionLevel: 'Q' as const },
   imageOptions: { hideBackgroundDots: true, imageSize: 0.4, margin: 2 },
-  dotsOptions: { type: 'dots', color: '#000000', gradient: null },
-  backgroundOptions: { color: '#ffffff', gradient: null },
+  dotsOptions: { type: 'dots' as const, color: '#000000' },
+  backgroundOptions: { color: '#ffffff' },
   image: props.image,
-  dotsOptionsHelper: {
-    colorType: { single: true, gradient: false },
-    gradient: {
-      linear: true,
-      radial: false,
-      color1: '#6a1a4c',
-      color2: '#6a1a4c',
-      rotation: '0',
-    },
-  },
-  cornersSquareOptions: { type: 'extra-rounded', color: '#000000' },
-  cornersSquareOptionsHelper: {
-    colorType: { single: true, gradient: false },
-    gradient: {
-      linear: true,
-      radial: false,
-      color1: '#000000',
-      color2: '#000000',
-      rotation: '0',
-    },
-  },
-  cornersDotOptions: { type: 'dot', color: '#000000' },
-  cornersDotOptionsHelper: {
-    colorType: { single: true, gradient: false },
-    gradient: {
-      linear: true,
-      radial: false,
-      color1: '#000000',
-      color2: '#000000',
-      rotation: '0',
-    },
-  },
-  backgroundOptionsHelper: {
-    colorType: { single: true, gradient: false },
-    gradient: {
-      linear: true,
-      radial: false,
-      color1: '#ffffff',
-      color2: '#ffffff',
-      rotation: '0',
-    },
-  },
+  cornersSquareOptions: { type: 'extra-rounded' as const, color: '#000000' },
+  cornersDotOptions: { type: 'dot' as const, color: '#000000' },
 }
 
 const qrCode = new QRCodeStyling(options)
-const qrCodeEl = ref(null)
+const qrCodeEl = useTemplateRef<HTMLElement>('qrCodeEl')
 
-function updateColor(newColor) {
+function updateColor(newColor: string) {
   qrCode.update({
-    dotsOptions: { type: 'dots', color: newColor, gradient: null },
-    cornersSquareOptions: { type: 'extra-rounded', color: newColor },
-    cornersDotOptions: { type: 'dot', color: newColor },
+    dotsOptions: { type: 'dots' as const, color: newColor },
+    cornersSquareOptions: { type: 'extra-rounded' as const, color: newColor },
+    cornersDotOptions: { type: 'dot' as const, color: newColor },
   })
 }
 
@@ -91,7 +48,9 @@ function downloadQRCode() {
 }
 
 onMounted(() => {
-  qrCode.append(qrCodeEl.value)
+  if (qrCodeEl.value) {
+    qrCode.append(qrCodeEl.value as unknown as HTMLElement)
+  }
 })
 </script>
 
@@ -100,29 +59,41 @@ onMounted(() => {
     <div
       ref="qrCodeEl"
       :data-text="data"
-      class="bg-white p-1 rounded-lg"
+      role="img"
+      :aria-label="$t('links.qr.text_alternative', { url: data })"
+      class="rounded-lg border border-border bg-white p-1 shadow-sm"
     />
     <div class="flex items-center gap-4">
       <div class="relative flex items-center">
-        <div
-          class="w-8 h-8 rounded-full border border-gray-300 dark:border-gray-600 cursor-pointer overflow-hidden"
+        <label
+          class="
+            relative size-11 cursor-pointer overflow-hidden rounded-full border
+            border-input ring-offset-background
+            focus-within:ring-3 focus-within:ring-ring/50
+            lg:size-9
+          "
           :style="{ backgroundColor: color }"
-          title="Change QR code color"
+          :title="$t('links.change_qr_color')"
         >
           <input
             v-model="color"
             type="color"
-            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            title="Change QR code color"
+            class="absolute inset-0 size-full cursor-pointer opacity-0"
+            :aria-label="$t('links.change_qr_color')"
+            :title="$t('links.change_qr_color')"
           >
-        </div>
+        </label>
       </div>
       <Button
         variant="outline"
         size="sm"
+        class="
+          min-h-11
+          lg:min-h-8
+        "
         @click="downloadQRCode"
       >
-        <Download class="w-4 h-4 mr-2" />
+        <Download aria-hidden="true" class="mr-2 size-4" />
         {{ $t('links.download_qr_code') }}
       </Button>
     </div>

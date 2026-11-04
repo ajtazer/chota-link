@@ -1,52 +1,124 @@
-<script setup>
+<script setup lang="ts">
+import type { CounterData } from '@/types'
+import { MousePointerClick } from '@lucide/vue'
 import NumberFlow from '@number-flow/vue'
-import { MousePointerClick } from 'lucide-vue-next'
 
-provide('id', ref())
+provide(LINK_ID_KEY, computed(() => undefined))
 
-const time = inject('time')
-const filters = inject('filters')
-const stats = ref({ visits: 0 })
+const realtimeStore = useDashboardRealtimeStore()
+const isPaused = inject(REALTIME_PAUSED_KEY, shallowRef(false))
+const stats = ref<CounterData>({ visits: 0, visitors: 0, referers: 0 })
+const loading = shallowRef(false)
+const error = shallowRef(false)
+const hasData = shallowRef(false)
+const retryKey = shallowRef(0)
 
-async function getRealtimeStats() {
-  const { data } = await useAPI('/api/stats/counters', {
-    query: {
-      startAt: time.value.startAt,
-      endAt: time.value.endAt,
-      ...filters.value,
-    },
-  })
+watch([
+  () => realtimeStore.timeRange.startAt,
+  () => realtimeStore.timeRange.endAt,
+  () => realtimeStore.filters,
+  isPaused,
+  retryKey,
+], async (_values, _oldValues, onCleanup) => {
+  if (isPaused.value) {
+    loading.value = false
+    return
+  }
 
-  stats.value = data?.[0] || {}
-}
+  if (realtimeStore.timeRange.startAt === 0) {
+    return
+  }
 
-watch([time, filters], getRealtimeStats, {
-  deep: true,
-})
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())
+  loading.value = true
+  error.value = false
 
-onMounted(async () => {
-  getRealtimeStats()
-})
+  try {
+    const result = await useAPI<{ data: CounterData[] }>('/api/stats/counters', {
+      signal: controller.signal,
+      query: {
+        ...realtimeStore.filters,
+        startAt: realtimeStore.timeRange.startAt,
+        endAt: realtimeStore.timeRange.endAt,
+      },
+    })
+    if (controller.signal.aborted || isPaused.value)
+      return
+    hasData.value = Boolean(result.data?.length)
+    stats.value = result.data?.[0] || { visits: 0, visitors: 0, referers: 0 }
+  }
+  catch {
+    if (!controller.signal.aborted && !isPaused.value)
+      error.value = true
+  }
+  finally {
+    if (!controller.signal.aborted && !isPaused.value)
+      loading.value = false
+  }
+}, { immediate: true })
 </script>
 
 <template>
-  <Card class="md:w-80 h-72 flex flex-col p-4 md:m-2">
+  <Card
+    size="sm"
+    class="
+      h-72
+      lg:m-2 lg:w-80
+    "
+  >
     <div class="h-24">
-      <CardHeader v-if="stats.visits" class="flex flex-row justify-between items-center pb-2 space-y-0 px-0 pt-2">
-        <CardTitle class="text-sm font-medium flex items-center gap-2">
-          <span class="size-1.5 inline-flex animate-ping rounded-full bg-green-400 opacity-75" />
+      <CardHeader
+        class="flex flex-row items-center justify-between"
+      >
+        <h2 class="flex items-center gap-2 text-sm font-medium">
+          <span
+            aria-hidden="true"
+            class="
+              inline-flex size-1.5 rounded-full bg-chart-1
+              motion-safe:animate-pulse
+            "
+          />
           {{ $t('dashboard.visits') }}
-        </CardTitle>
-        <MousePointerClick class="w-4 h-4 text-muted-foreground" />
+        </h2>
+        <MousePointerClick
+          aria-hidden="true"
+          class="size-4 text-muted-foreground"
+        />
       </CardHeader>
-      <CardContent class="px-0 pb-4">
-        <NumberFlow class="text-2xl font-bold" :class="{ 'blur-md opacity-60': !stats.visits }" :value="stats.visits" />
+      <CardContent>
+        <div v-if="loading && !hasData" role="status" aria-busy="true">
+          <Skeleton class="h-8 w-20" aria-hidden="true" />
+          <span class="sr-only">{{ $t('dashboard.loading') }}</span>
+        </div>
+        <div
+          v-else-if="error" class="
+            flex items-center gap-1 text-sm text-destructive
+          "
+          role="alert"
+        >
+          {{ $t('dashboard.realtime.stats_error') }}
+          <Button
+            type="button" variant="link" size="sm" class="text-destructive" @click="retryKey++"
+          >
+            {{ $t('common.try_again') }}
+          </Button>
+        </div>
+        <div v-else-if="!hasData" class="text-sm text-muted-foreground" role="status">
+          {{ $t('dashboard.no_data') }}
+        </div>
+        <NumberFlow v-else class="text-2xl font-bold tabular-nums" :value="stats.visits" aria-live="polite" />
       </CardContent>
     </div>
-    <DashboardAnalysisViews
-      class="w-full h-40 border-none !p-0"
-      mode="simple"
-      chart-type="bar"
-    />
+    <CardContent class="min-h-0 flex-1">
+      <DashboardAnalysisChartBody
+        class="size-full"
+        mode="simple"
+        chart-type="bar"
+        :start-at="realtimeStore.timeRange.startAt"
+        :end-at="realtimeStore.timeRange.endAt"
+        :filters="realtimeStore.filters"
+      />
+    </CardContent>
   </Card>
 </template>

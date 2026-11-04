@@ -1,33 +1,32 @@
 <script setup lang="ts">
-import { type HTMLAttributes, computed } from 'vue'
+import { ChevronRightIcon } from '@lucide/vue';
+
+import type { DropdownMenuSubTriggerProps } from "reka-ui"
+import type { HTMLAttributes } from "vue"
+import { reactiveOmit } from "@vueuse/core"
 import {
   DropdownMenuSubTrigger,
-  type DropdownMenuSubTriggerProps,
   useForwardProps,
-} from 'radix-vue'
-import { ChevronRight } from 'lucide-vue-next'
-import { cn } from '@/utils'
+} from "reka-ui"
+import { cn } from "@/lib/utils"
 
-const props = defineProps<DropdownMenuSubTriggerProps & { class?: HTMLAttributes['class'] }>()
+const props = defineProps<DropdownMenuSubTriggerProps & { class?: HTMLAttributes["class"], inset?: boolean }>()
 
-const delegatedProps = computed(() => {
-  const { class: _, ...delegated } = props
-
-  return delegated
-})
-
+const delegatedProps = reactiveOmit(props, "class", "inset")
 const forwardedProps = useForwardProps(delegatedProps)
 </script>
 
 <template>
   <DropdownMenuSubTrigger
+    data-slot="dropdown-menu-sub-trigger"
+    :data-inset="inset ? '' : undefined"
     v-bind="forwardedProps"
     :class="cn(
-      'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent',
+      'focus:bg-accent focus:text-accent-foreground data-open:bg-accent data-open:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground gap-2 rounded-xl px-3 py-2 text-sm data-inset:pl-9.5 [&_svg:not([class*=size-])]:size-4 flex cursor-default items-center outline-hidden select-none [&_svg]:pointer-events-none [&_svg]:shrink-0',
       props.class,
     )"
   >
     <slot />
-    <ChevronRight class="ml-auto h-4 w-4" />
+    <ChevronRightIcon class="cn-rtl-flip ml-auto" />
   </DropdownMenuSubTrigger>
 </template>

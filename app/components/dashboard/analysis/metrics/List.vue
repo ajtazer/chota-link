@@ -1,30 +1,38 @@
-<script setup>
+<script setup lang="ts">
+import type { MetricItem } from '@/types'
 import { VList } from 'virtua/vue'
 
-defineProps({
-  metrics: {
-    type: Array,
-    required: true,
-  },
-  type: {
-    type: String,
-    required: true,
-  },
+const props = withDefaults(defineProps<{
+  metrics: MetricItem[]
+  type: string
+  viewportHeight?: number
+}>(), {
+  viewportHeight: 342,
 })
+
+const { locale } = useI18n()
 </script>
 
 <template>
   <div class="w-full text-sm">
     <div
-      class="flex justify-between transition-colors border-b hover:bg-muted/50 leading-[48px]"
+      class="
+        flex justify-between border-b leading-[48px] transition-colors
+        hover:bg-muted/50
+        motion-reduce:transition-none
+      "
     >
       <div
-        class="h-12 px-4 font-medium text-left align-middle text-muted-foreground "
+        class="
+          h-12 px-4 text-left align-middle font-medium text-muted-foreground
+        "
       >
         {{ $t('dashboard.name') }}
       </div>
       <div
-        class="h-12 px-4 font-medium text-right align-middle text-muted-foreground"
+        class="
+          h-12 px-4 text-right align-middle font-medium text-muted-foreground
+        "
       >
         {{ $t('dashboard.count') }}
       </div>
@@ -32,12 +40,18 @@ defineProps({
     <VList
       v-slot="{ item: metric }"
       :data="metrics"
-      :style="{ height: '342px' }"
+      :style="{ height: `${props.viewportHeight}px` }"
     >
-      <div class="px-4 py-2 transition-colors border-b hover:bg-muted/50">
-        <div class="flex justify-between">
+      <div
+        class="
+          border-b px-4 py-2 transition-colors
+          hover:bg-muted/50
+          motion-reduce:transition-none
+        "
+      >
+        <div class="flex items-start justify-between gap-3">
           <div
-            class="flex-1 leading-5 truncate font-mediums"
+            class="min-w-0 flex-1 leading-5"
           >
             <DashboardAnalysisMetricsName
               :name="metric.name"
@@ -45,31 +59,32 @@ defineProps({
             />
           </div>
           <div
-            class="text-right"
+            class="shrink-0 text-right tabular-nums"
           >
-            {{ formatNumber(metric.count) }}
-            <span class="text-xs text-gray-500">({{ metric.percent }}%)</span>
+            {{ formatNumber(metric.count, locale) }}
+            <span class="text-xs text-muted-foreground">({{ metric.percent }}%)</span>
           </div>
         </div>
         <div
           class="flex-1"
         >
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger class="w-full">
-                <Progress
-                  v-model="metric.percent"
-                  class="h-2"
-                  :color="metric.color"
-                />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{{ metric.percent }}%</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Progress
+            v-model="metric.percent"
+            class="h-2"
+            :aria-label="`${$t('dashboard.count')}: ${metric.percent}%`"
+          />
         </div>
       </div>
     </VList>
   </div>
 </template>
+
+<style scoped>
+:deep([data-slot='progress']) {
+  background-color: var(--muted);
+}
+
+:deep([data-slot='progress-indicator']) {
+  background-color: var(--chart-1);
+}
+</style>
