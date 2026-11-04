@@ -1,19 +1,27 @@
+import type { NitroFetchOptions, NitroFetchRequest } from 'nitropack'
 import { defu } from 'defu'
-import { toast } from 'vue-sonner'
+import { useAuthToken } from '@/composables/useAuthToken'
 
-export function useAPI(api: string, options?: object): Promise<unknown> {
-  return $fetch(api, defu(options || {}, {
+type APIOptions = Omit<NitroFetchOptions<NitroFetchRequest>, 'headers'> & {
+  headers?: Record<string, string>
+}
+
+export function useAPI<T = unknown>(api: string, options?: APIOptions): Promise<T> {
+  const { getToken, removeToken } = useAuthToken()
+
+  const mergedOptions = defu(options || {}, {
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('SinkSiteToken') || ''}`,
+      'Authorization': `Bearer ${getToken() || ''}`,
+      'X-Requested-With': 'XMLHttpRequest',
     },
-  })).catch((error) => {
+  }) as NitroFetchOptions<NitroFetchRequest>
+
+  return $fetch<T>(api, mergedOptions).catch((error) => {
     if (error?.status === 401) {
-      localStorage.removeItem('SinkSiteToken')
-      navigateTo('/dashboard/login')
-    }
-    if (error?.data?.statusMessage) {
-      toast(error?.data?.statusMessage)
+      removeToken()
+      if (import.meta.client && window.location.pathname !== '/dashboard/login')
+        window.location.assign('/dashboard/login')
     }
     return Promise.reject(error)
-  })
+  }) as Promise<T>
 }
