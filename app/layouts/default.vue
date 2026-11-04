@@ -162,12 +162,12 @@ const { rawStats } = useGithubStats()
             <small class="block text-center text-sm text-muted-foreground">
               &copy; {{ new Date().getFullYear() }}
               <a
-                href="https://html.zone"
+                href="https://bihari.xyz"
                 target="_blank"
-                title="HTML.ZONE"
+                title="bihari.xyz"
                 class="hover:text-primary"
               >
-                {{ $t('layouts.footer.copyright') }}
+                bihari.xyz
               </a>
             </small>
           </div>
